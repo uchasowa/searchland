@@ -9,7 +9,10 @@
     "format": "prettier --write .",
     "db:generate": "pnpm --filter @searchland/server db:generate",
     "db:migrate": "pnpm --filter @searchland/server db:migrate",
-    "db:studio": "pnpm --filter @searchland/server db:studio"
+    "db:studio": "pnpm --filter @searchland/server db:studio",
+    "vercel:push-db": "bash scripts/vercel-push-db-url.sh",
+    "vercel:push-db:web": "bash scripts/vercel-push-db-url.sh web",
+    "vercel:push-db:server": "bash scripts/vercel-push-db-url.sh server"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

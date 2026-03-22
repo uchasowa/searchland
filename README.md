@@ -59,5 +59,3 @@ In dev the Vite app proxies `/trpc`, `/upload`, and `/uploads` to the API so you
 | `pnpm db:migrate` | Apply migrations |
 | `pnpm db:studio` | Drizzle Studio |
 
-
-
