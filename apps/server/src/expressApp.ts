@@ -55,16 +55,17 @@ export function createApp() {
     });
   }
 
-  ensureUploadsDir();
-  app.use('/uploads', express.static(uploadsDir));
-  registerUploadRoutes(app);
-
+  /** Must run before `/upload` and `/uploads` or cross-origin browser requests get no CORS headers. */
   app.use(
     cors({
       origin: (origin, cb) => cb(null, originAllowed(origin)),
       credentials: true,
     })
   );
+
+  ensureUploadsDir();
+  app.use('/uploads', express.static(uploadsDir));
+  registerUploadRoutes(app);
 
   app.get('/health', (_req, res) => {
     res.json({
