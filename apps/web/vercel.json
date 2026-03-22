@@ -1,8 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter @searchland/server build && pnpm --filter @searchland/web build",
-  "outputDirectory": "apps/web/dist",
+  "framework": "vite",
+  "installCommand": "cd ../.. && pnpm install",
+  "buildCommand": "cd ../.. && pnpm --filter @searchland/server build && pnpm --filter @searchland/web build",
+  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/trpc", "destination": "/api/trpc" },
     { "source": "/trpc/:path*", "destination": "/api/trpc/:path*" },
@@ -14,7 +15,8 @@
   "functions": {
     "api/index.mjs": {
       "memory": 1024,
-      "maxDuration": 30
+      "maxDuration": 30,
+      "includeFiles": "../server/dist/**"
     }
   }
 }

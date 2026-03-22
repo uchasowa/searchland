@@ -59,3 +59,9 @@ In dev the Vite app proxies `/trpc`, `/upload`, and `/uploads` to the API so you
 | `pnpm db:migrate` | Apply migrations |
 | `pnpm db:studio` | Drizzle Studio |
 
+## Vercel
+
+In the Vercel project, set **Root Directory** to **`apps/web`** (important). `apps/web/vercel.json` turns `dist` into a Vite static deploy and adds `api/index.mjs` for Express. Install/build run from the monorepo root via `cd ../.. && …`.
+
+Set **`DATABASE_URL`** in Vercel → Environment Variables. Clear any **Output Directory** override in the dashboard (use `dist` from config) so Vercel does not treat `apps/web/dist` like a Node server bundle from the repo root.
+
