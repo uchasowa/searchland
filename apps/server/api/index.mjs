@@ -1,8 +1,5 @@
-import serverless from 'serverless-http';
 import { createApp } from '../dist/expressApp.js';
 
-let handler;
-export default function api(req, res) {
-  if (!handler) handler = serverless(createApp());
-  return handler(req, res);
-}
+/** Vercel’s Node runtime accepts an Express `app` as the default export (no `serverless-http`). */
+const app = createApp();
+export default app;
