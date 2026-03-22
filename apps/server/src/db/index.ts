@@ -1,22 +1,40 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema.js';
 
-function requireEnv(name: string): string {
-  const v = process.env[name];
-  if (!v) throw new Error(`Missing required environment variable: ${name}`);
-  return v;
+export type AppDb = PostgresJsDatabase<typeof schema>;
+
+let _db: AppDb | undefined;
+
+function missingDbMessage() {
+  return (
+    'DATABASE_URL is not set. In Vercel: open this project → Settings → Environment Variables → add DATABASE_URL for Production (and Preview if needed), then redeploy. ' +
+    'Use your Postgres connection string (e.g. Supabase session pooler URI).'
+  );
 }
 
-const connectionString = requireEnv('DATABASE_URL');
+/** Lazily connects so the process can boot (e.g. /health) before env is configured. */
+export function getDb(): AppDb {
+  if (_db) return _db;
 
-const isLocal =
-  /localhost|127\.0\.0\.1/.test(connectionString) && !connectionString.includes('pooler');
-const max = process.env.VERCEL ? 1 : 10;
+  const connectionString = process.env.DATABASE_URL?.trim();
+  if (!connectionString) {
+    throw new Error(missingDbMessage());
+  }
 
-const client = postgres(connectionString, {
-  max,
-  ...(isLocal ? {} : { ssl: 'require' as const }),
-});
+  const isLocal =
+    /localhost|127\.0\.0\.1/.test(connectionString) && !connectionString.includes('pooler');
+  const max = process.env.VERCEL ? 1 : 10;
 
-export const db = drizzle(client, { schema });
+  const client = postgres(connectionString, {
+    max,
+    ...(isLocal ? {} : { ssl: 'require' as const }),
+  });
+
+  _db = drizzle(client, { schema });
+  return _db;
+}
+
+export function isDatabaseConfigured(): boolean {
+  return Boolean(process.env.DATABASE_URL?.trim());
+}

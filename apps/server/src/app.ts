@@ -1,7 +1,7 @@
 import * as trpcExpress from '@trpc/server/adapters/express';
 import cors from 'cors';
 import express from 'express';
-import { db } from './db/index.js';
+import { getDb, isDatabaseConfigured } from './db/index.js';
 import { createContext } from './trpc/context.js';
 import { appRouter } from './trpc/root.js';
 import { ensureUploadsDir, registerUploadRoutes, uploadsDir } from './upload.js';
@@ -63,14 +63,26 @@ export function createApp() {
   );
 
   app.get('/health', (_req, res) => {
-    res.json({ ok: true });
+    res.json({
+      ok: true,
+      database: isDatabaseConfigured() ? 'configured' : 'missing_DATABASE_URL',
+    });
+  });
+
+  app.get('/', (_req, res) => {
+    res.json({
+      service: 'searchland-api',
+      health: '/health',
+      trpc: '/trpc',
+      database: isDatabaseConfigured() ? 'configured' : 'set DATABASE_URL in Vercel env and redeploy',
+    });
   });
 
   app.use(
     '/trpc',
     trpcExpress.createExpressMiddleware({
       router: appRouter,
-      createContext: () => createContext({ db }),
+      createContext: () => createContext({ db: getDb() }),
     })
   );
 

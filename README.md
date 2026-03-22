@@ -63,5 +63,7 @@ In dev the Vite app proxies `/trpc`, `/upload`, and `/uploads` to the API so you
 
 In the Vercel project, set **Root Directory** to **`apps/web`** (important). `apps/web/vercel.json` turns `dist` into a Vite static deploy and adds `api/index.mjs` for Express. Install/build run from the monorepo root via `cd ../.. && …`.
 
-Set **`DATABASE_URL`** in Vercel → Environment Variables. Clear any **Output Directory** override in the dashboard (use `dist` from config) so Vercel does not treat `apps/web/dist` like a Node server bundle from the repo root.
+Set **`DATABASE_URL`** in Vercel → **Environment Variables** for **each** project that runs the API. If the frontend and API are separate Vercel projects, you must add `DATABASE_URL` to **both** (or only to the server project if the UI calls that URL). Values are not copied between projects.
+
+Clear any **Output Directory** override in the dashboard (use `dist` from config) when using the `apps/web` deploy described above.
 
