@@ -38,6 +38,9 @@ importers:
       postgres:
         specifier: ^3.4.5
         version: 3.4.8
+      serverless-http:
+        specifier: ^3.2.0
+        version: 3.2.0
       superjson:
         specifier: ^2.2.2
         version: 2.2.6
