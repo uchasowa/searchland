@@ -12,7 +12,8 @@ function trpcUrl() {
   }
   const base = import.meta.env.VITE_API_URL?.replace(/\/$/, '');
   if (base) return `${base}/trpc`;
-  return 'http://localhost:3001/trpc';
+  // Production same-origin (e.g. Vercel: static + `/api` serverless)
+  return '/trpc';
 }
 
 const apiUrl = trpcUrl();

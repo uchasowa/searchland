@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm --filter @searchland/server build && pnpm --filter @searchland/web build",
+  "outputDirectory": "apps/web/dist",
+  "rewrites": [
+    { "source": "/trpc", "destination": "/api/trpc" },
+    { "source": "/trpc/:path*", "destination": "/api/trpc/:path*" },
+    { "source": "/upload", "destination": "/api/upload" },
+    { "source": "/uploads/:path*", "destination": "/api/uploads/:path*" },
+    { "source": "/health", "destination": "/api/health" },
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+  ],
+  "functions": {
+    "api/index.mjs": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  }
+}

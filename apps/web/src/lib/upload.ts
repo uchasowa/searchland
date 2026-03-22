@@ -3,7 +3,9 @@ export function apiOrigin(): string {
   if (import.meta.env.DEV) {
     return '';
   }
-  return import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? 'http://localhost:3001';
+  const base = import.meta.env.VITE_API_URL?.replace(/\/$/, '');
+  if (base) return base;
+  return '';
 }
 
 /** Turn a stored path like `/uploads/…` into a full URL for `<img src>`. */

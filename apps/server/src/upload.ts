@@ -7,14 +7,21 @@ import multer from 'multer';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-export const uploadsDir = join(__dirname, '..', 'uploads');
+/** Vercel serverless FS is read-only except /tmp; local dev uses apps/server/uploads */
+export const uploadsDir = process.env.VERCEL
+  ? join('/tmp', 'searchland-uploads')
+  : join(__dirname, '..', 'uploads');
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 const MAX_BYTES = 5 * 1024 * 1024;
 
 export function ensureUploadsDir() {
-  if (!existsSync(uploadsDir)) {
-    mkdirSync(uploadsDir, { recursive: true });
+  try {
+    if (!existsSync(uploadsDir)) {
+      mkdirSync(uploadsDir, { recursive: true });
+    }
+  } catch {
+    /* ignore: e.g. read-only FS; uploads may still fail at runtime */
   }
 }
 
