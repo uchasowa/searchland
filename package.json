@@ -1,0 +1,18 @@
+{
+  "name": "searchland",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,green \"pnpm --filter @searchland/server dev\" \"pnpm --filter @searchland/web dev\"",
+    "build": "pnpm --filter @searchland/server build && pnpm --filter @searchland/web build",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write .",
+    "db:generate": "pnpm --filter @searchland/server db:generate",
+    "db:migrate": "pnpm --filter @searchland/server db:migrate",
+    "db:studio": "pnpm --filter @searchland/server db:studio"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.4.2"
+  }
+}

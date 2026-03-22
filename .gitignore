@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.local
+*.log
+.DS_Store
+coverage
+.turbo
+apps/server/uploads
+apps/server/drizzle.config.js
+apps/server/drizzle.config.js.map
