@@ -28,7 +28,11 @@ export function getDb(): AppDb {
 
   const client = postgres(connectionString, {
     max,
+    /** Default is 30s — same as Vercel `maxDuration`, which surfaces as a vague 504. Fail faster with a real error. */
+    connect_timeout: 12,
     ...(isLocal ? {} : { ssl: 'require' as const }),
+    /** Transaction poolers (e.g. Supabase) + serverless: avoid prepared statements that can stall or error. */
+    ...(process.env.VERCEL ? { prepare: false } : {}),
   });
 
   _db = drizzle(client, { schema });

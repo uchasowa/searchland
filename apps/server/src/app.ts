@@ -43,6 +43,10 @@ function originAllowed(origin: string | undefined): boolean {
 export function createApp() {
   const app = express();
 
+  app.get(['/favicon.ico', '/favicon.png', '/apple-touch-icon.png'], (_req, res) => {
+    res.status(204).end();
+  });
+
   if (process.env.VERCEL) {
     app.use((req, _res, next) => {
       const u = req.url ?? '/';
