@@ -63,7 +63,7 @@ In dev the Vite app proxies `/trpc`, `/upload`, and `/uploads` to the API so you
 
 **Frontend + API in one project:** set **Root Directory** to **`apps/web`**. See `apps/web/vercel.json`; install/build use `cd ../.. && pnpm …` from the monorepo root.
 
-**API-only project** (e.g. `searchland-server`): set **Root Directory** to **`apps/server`**. `apps/server/vercel.json` builds with `pnpm run build` and serves all routes through `api/index.mjs` (default export is the serverless handler). Do **not** point Vercel’s entry at `src/app.ts` / `src/app.js` — use the `api/` route instead.
+**API-only project** (e.g. `searchland-server`): set **Root Directory** to **`apps/server`**. `apps/server/vercel.json` runs `pnpm run build` and rewrites traffic to `/api`. Vercel often treats **`src/app.ts`** as the serverless entry; that file **default-exports** a `serverless-http` handler (see `createApp()` in the same module). `api/index.mjs` remains a valid alternate entry if your project routes only to `api/`.
 
 Set **`DATABASE_URL`** in Vercel → **Environment Variables** for **each** project that runs the API. If the frontend and API are separate Vercel projects, you must add `DATABASE_URL` to **both** (or only to the server project if the UI calls that URL). Values are not copied between projects.
 
