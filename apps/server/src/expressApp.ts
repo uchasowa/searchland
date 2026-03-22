@@ -1,8 +1,6 @@
 import * as trpcExpress from '@trpc/server/adapters/express';
 import cors from 'cors';
 import express from 'express';
-import type { IncomingMessage, ServerResponse } from 'node:http';
-import serverless from 'serverless-http';
 import { getDb, isDatabaseConfigured } from './db/index.js';
 import { createContext } from './trpc/context.js';
 import { appRouter } from './trpc/root.js';
@@ -93,12 +91,4 @@ export function createApp() {
   );
 
   return app;
-}
-
-/** Vercel may load `src/app` as the serverless entry; local `dist/index.js` only imports `createApp`. */
-let vercelHandler: ReturnType<typeof serverless> | undefined;
-
-export default function defaultHandler(req: IncomingMessage, res: ServerResponse): void {
-  if (!vercelHandler) vercelHandler = serverless(createApp());
-  vercelHandler(req, res);
 }

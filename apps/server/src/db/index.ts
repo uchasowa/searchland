@@ -26,13 +26,23 @@ export function getDb(): AppDb {
     /localhost|127\.0\.0\.1/.test(connectionString) && !connectionString.includes('pooler');
   const max = process.env.VERCEL ? 1 : 10;
 
+  const vercel = Boolean(process.env.VERCEL);
+
   const client = postgres(connectionString, {
     max,
-    /** Default is 30s — same as Vercel `maxDuration`, which surfaces as a vague 504. Fail faster with a real error. */
-    connect_timeout: 12,
+    /** Fail before Vercel’s 30s wall; avoids opaque “Runtime Timeout” when the host is wrong. */
+    connect_timeout: 10,
     ...(isLocal ? {} : { ssl: 'require' as const }),
-    /** Transaction poolers (e.g. Supabase) + serverless: avoid prepared statements that can stall or error. */
-    ...(process.env.VERCEL ? { prepare: false } : {}),
+    /** Supabase pooler + serverless: skip extra round-trip on first query. */
+    ...(vercel ? { fetch_types: false, prepare: false } : {}),
+    ...(vercel
+      ? {
+          connection: {
+            /** ms — cap queries so the lambda can return an error instead of hitting maxDuration. */
+            statement_timeout: 20_000,
+          },
+        }
+      : {}),
   });
 
   _db = drizzle(client, { schema });
