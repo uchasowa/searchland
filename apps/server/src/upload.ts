@@ -2,18 +2,52 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Express, Request, Response } from 'express';
 import multer from 'multer';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-/** Vercel serverless FS is read-only except /tmp; local dev uses apps/server/uploads */
+/** Local dev: repo folder. Vercel + disk mode (not recommended): /tmp — still ephemeral across instances. */
 export const uploadsDir = process.env.VERCEL
   ? join('/tmp', 'searchland-uploads')
   : join(__dirname, '..', 'uploads');
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 const MAX_BYTES = 5 * 1024 * 1024;
+
+export function objectStorageConfigured(): boolean {
+  return Boolean(
+    process.env.SUPABASE_URL?.trim() &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() &&
+      process.env.SUPABASE_STORAGE_BUCKET?.trim()
+  );
+}
+
+let _supabase: SupabaseClient | undefined;
+
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    const url = process.env.SUPABASE_URL!.trim();
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim();
+    _supabase = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+  return _supabase;
+}
+
+/** Object key inside the bucket from a public object URL. */
+export function supabaseObjectPathFromPublicUrl(publicUrl: string, bucket: string): string | null {
+  try {
+    const u = new URL(publicUrl);
+    const prefix = `/storage/v1/object/public/${bucket}/`;
+    if (!u.pathname.startsWith(prefix)) return null;
+    return decodeURIComponent(u.pathname.slice(prefix.length));
+  } catch {
+    return null;
+  }
+}
 
 export function ensureUploadsDir() {
   try {
@@ -34,7 +68,20 @@ export function filePathForPublicUploadUrl(publicPath: string): string | null {
 }
 
 export function unlinkUploadPaths(paths: string[]) {
+  const bucket = process.env.SUPABASE_STORAGE_BUCKET?.trim();
   for (const p of paths) {
+    if (p.startsWith('https://') && objectStorageConfigured() && bucket) {
+      const key = supabaseObjectPathFromPublicUrl(p, bucket);
+      if (key) {
+        void getSupabase()
+          .storage.from(bucket)
+          .remove([key])
+          .then(({ error }) => {
+            if (error) console.error('[upload] Supabase remove failed:', error.message);
+          });
+      }
+      continue;
+    }
     const abs = filePathForPublicUploadUrl(p);
     if (!abs) continue;
     try {
@@ -61,7 +108,7 @@ function extForMime(mimetype: string): string | null {
   }
 }
 
-const storage = multer.diskStorage({
+const diskStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     ensureUploadsDir();
     cb(null, uploadsDir);
@@ -72,8 +119,8 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({
-  storage,
+const diskUpload = multer({
+  storage: diskStorage,
   limits: { fileSize: MAX_BYTES, files: 1 },
   fileFilter: (_req, file, cb) => {
     if (ALLOWED_MIME.has(file.mimetype)) {
@@ -84,20 +131,74 @@ const upload = multer({
   },
 });
 
+const memoryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_BYTES, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_MIME.has(file.mimetype)) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error('Only JPEG, PNG, GIF, or WebP images are allowed'));
+  },
+});
+
+async function uploadBufferToSupabase(buffer: Buffer, mimetype: string): Promise<string> {
+  const bucket = process.env.SUPABASE_STORAGE_BUCKET!.trim();
+  const ext = extForMime(mimetype) ?? '.png';
+  const objectPath = `feedback/${randomUUID()}${ext}`;
+  const supabase = getSupabase();
+  const { error } = await supabase.storage.from(bucket).upload(objectPath, buffer, {
+    contentType: mimetype,
+    upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+  return data.publicUrl;
+}
+
+function handleUploadResult(req: Request, res: Response, err: unknown): void {
+  void (async () => {
+    if (err) {
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      res.status(400).json({ error: message });
+      return;
+    }
+    const f = req.file;
+    if (!f) {
+      res.status(400).json({ error: 'No file' });
+      return;
+    }
+    if (objectStorageConfigured()) {
+      try {
+        const buf = (f as Express.Multer.File & { buffer?: Buffer }).buffer;
+        if (!buf) {
+          res.status(500).json({ error: 'Missing file buffer' });
+          return;
+        }
+        const url = await uploadBufferToSupabase(buf, f.mimetype);
+        res.json({ url });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Upload failed';
+        res.status(500).json({ error: message });
+      }
+      return;
+    }
+    res.json({ url: `/uploads/${f.filename}` });
+  })();
+}
+
 export function registerUploadRoutes(app: Express) {
   app.post('/upload', (req: Request, res: Response) => {
-    upload.single('file')(req, res, (err: unknown) => {
-      if (err) {
-        const message = err instanceof Error ? err.message : 'Upload failed';
-        res.status(400).json({ error: message });
-        return;
-      }
-      const f = req.file;
-      if (!f) {
-        res.status(400).json({ error: 'No file' });
-        return;
-      }
-      res.json({ url: `/uploads/${f.filename}` });
-    });
+    if (process.env.VERCEL && !objectStorageConfigured()) {
+      res.status(503).json({
+        error:
+          'Uploads on Vercel need Supabase Storage. Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_STORAGE_BUCKET (public bucket).',
+      });
+      return;
+    }
+
+    const uploader = objectStorageConfigured() ? memoryUpload : diskUpload;
+    uploader.single('file')(req, res, (err) => handleUploadResult(req, res, err));
   });
 }

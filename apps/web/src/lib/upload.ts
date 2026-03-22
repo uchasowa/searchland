@@ -35,7 +35,7 @@ export async function uploadFeedbackImage(file: File): Promise<string> {
     throw new Error(message);
   }
   const data = JSON.parse(text) as { url: string };
-  if (!data.url?.startsWith('/uploads/')) {
+  if (!data.url?.startsWith('/uploads/') && !data.url?.startsWith('https://')) {
     throw new Error('Invalid upload response');
   }
   return data.url;

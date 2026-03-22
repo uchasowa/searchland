@@ -16,7 +16,14 @@ function optionalText(value: string | undefined | null, max: number): string | n
   return t.length > max ? t.slice(0, max) : t;
 }
 
-const uploadPathZ = z.string().regex(/^\/uploads\/[a-zA-Z0-9._-]+$/);
+/** Local disk `/uploads/...` or Supabase Storage public HTTPS URL */
+const storedImageUrlZ = z
+  .string()
+  .max(2048)
+  .refine(
+    (s) => /^\/uploads\/[a-zA-Z0-9._-]+$/.test(s) || /^https:\/\/.+/.test(s),
+    { message: 'Invalid image URL' }
+  );
 
 const feedbackBody = z.object({
   title: z.string().min(1).max(500),
@@ -29,7 +36,7 @@ const feedbackBody = z.object({
   company: z.string().max(200).optional(),
   phone: z.string().max(50).optional(),
   notes: z.string().max(5000).optional(),
-  imageUrls: z.array(uploadPathZ).max(5).optional(),
+  imageUrls: z.array(storedImageUrlZ).max(5).optional(),
 });
 
 function rowValues(input: z.infer<typeof feedbackBody>) {
